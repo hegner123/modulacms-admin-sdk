@@ -1,5 +1,7 @@
 # modulacms-admin-sdk
 
+[![CI](https://github.com/hegner123/modulacms-admin-sdk/actions/workflows/ci.yml/badge.svg)](https://github.com/hegner123/modulacms-admin-sdk/actions/workflows/ci.yml)
+
 TypeScript SDK for the ModulaCMS admin API. Provides fully typed CRUD operations for all admin resources, authentication, media uploads, content tree retrieval, and bulk imports from external CMS platforms.
 
 ## Features

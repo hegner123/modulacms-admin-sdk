@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test";
-import { createClient, isApiError } from "./index.js";
-import type { ClientConfig, ModulaCMSClient } from "./index.js";
+import { createAdminClient, isApiError } from "./index.js";
+import type { ClientConfig, ModulaCMSAdminClient } from "./index.js";
 import type { ApiError } from "./types/common.js";
 
 // ---------------------------------------------------------------------------
@@ -310,7 +310,7 @@ function validConfig(overrides?: Partial<ClientConfig>): ClientConfig {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("createClient", () => {
+describe("createAdminClient", () => {
   // -------------------------------------------------------------------------
   // Config validation: baseUrl
   // -------------------------------------------------------------------------
@@ -323,7 +323,7 @@ describe("createClient", () => {
       { name: "just a path", url: "/api" },
       { name: "just a port", url: ":8080" },
     ])("throws on invalid baseUrl ($name)", ({ url }) => {
-      expect(() => createClient({ baseUrl: url })).toThrow(
+      expect(() => createAdminClient({ baseUrl: url })).toThrow(
         "Invalid baseUrl: " + url,
       );
     });
@@ -334,12 +334,12 @@ describe("createClient", () => {
       { name: "https with path", url: "https://example.com/api" },
     ])("accepts valid $name", ({ url }) => {
       // Should not throw -- the client is created successfully
-      const client = createClient({ baseUrl: url });
+      const client = createAdminClient({ baseUrl: url });
       expect(client).toBeDefined();
     });
 
     test("accepts http URL when allowInsecure is true", () => {
-      const client = createClient({
+      const client = createAdminClient({
         baseUrl: "http://localhost:3000",
         allowInsecure: true,
       });
@@ -354,7 +354,7 @@ describe("createClient", () => {
   describe("http:// protocol enforcement", () => {
     test("throws on http:// without allowInsecure", () => {
       expect(() =>
-        createClient({ baseUrl: "http://localhost:3000" }),
+        createAdminClient({ baseUrl: "http://localhost:3000" }),
       ).toThrow(
         "baseUrl uses http:// which transmits credentials in plaintext. " +
           "Set allowInsecure: true to allow this, or use https://.",
@@ -363,7 +363,7 @@ describe("createClient", () => {
 
     test("throws on http:// when allowInsecure is false", () => {
       expect(() =>
-        createClient({
+        createAdminClient({
           baseUrl: "http://localhost:3000",
           allowInsecure: false,
         }),
@@ -374,7 +374,7 @@ describe("createClient", () => {
     });
 
     test("allows http:// when allowInsecure is true", () => {
-      const client = createClient({
+      const client = createAdminClient({
         baseUrl: "http://localhost:3000",
         allowInsecure: true,
       });
@@ -382,14 +382,14 @@ describe("createClient", () => {
     });
 
     test("does not throw on https:// regardless of allowInsecure", () => {
-      const client = createClient({
+      const client = createAdminClient({
         baseUrl: "https://api.example.com",
       });
       expect(client).toBeDefined();
     });
 
     test("does not throw on https:// with allowInsecure false", () => {
-      const client = createClient({
+      const client = createAdminClient({
         baseUrl: "https://api.example.com",
         allowInsecure: false,
       });
@@ -404,7 +404,7 @@ describe("createClient", () => {
   describe("apiKey validation", () => {
     test("throws when apiKey is an empty string", () => {
       expect(() =>
-        createClient({
+        createAdminClient({
           baseUrl: "https://api.example.com",
           apiKey: "",
         }),
@@ -412,14 +412,14 @@ describe("createClient", () => {
     });
 
     test("accepts undefined apiKey (no auth)", () => {
-      const client = createClient({
+      const client = createAdminClient({
         baseUrl: "https://api.example.com",
       });
       expect(client).toBeDefined();
     });
 
     test("accepts a non-empty apiKey", () => {
-      const client = createClient({
+      const client = createAdminClient({
         baseUrl: "https://api.example.com",
         apiKey: "my-secret-key",
       });
@@ -429,7 +429,7 @@ describe("createClient", () => {
     // Verify the empty string check uses === '' (not falsy check).
     // An apiKey that is explicitly undefined should NOT trigger the error.
     test("does not throw when apiKey is explicitly undefined", () => {
-      const client = createClient({
+      const client = createAdminClient({
         baseUrl: "https://api.example.com",
         apiKey: undefined,
       });
@@ -445,7 +445,7 @@ describe("createClient", () => {
     test("uses defaultTimeout of 30000 when not specified", async () => {
       // We verify this indirectly: the client should work with a server that
       // responds within 30 seconds. The timeout is passed to createHttpClient.
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       // If defaultTimeout were 0, this would time out immediately
       const result = await client.adminRoutes.list();
       expect(result).toBeInstanceOf(Array);
@@ -454,7 +454,7 @@ describe("createClient", () => {
     test("uses custom defaultTimeout when specified", async () => {
       // Use a very short timeout to verify it's being applied.
       // Any endpoint that responds quickly should still work.
-      const client = createClient(validConfig({ defaultTimeout: 5000 }));
+      const client = createAdminClient(validConfig({ defaultTimeout: 5000 }));
       const result = await client.adminRoutes.list();
       expect(result).toBeInstanceOf(Array);
     });
@@ -463,13 +463,13 @@ describe("createClient", () => {
       // Verify the client works with default credentials.
       // The credentials value is passed through to fetch; we can't directly
       // observe it on the server side, but we verify no error is thrown.
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.adminRoutes.list();
       expect(result).toBeInstanceOf(Array);
     });
 
     test("uses custom credentials when specified", async () => {
-      const client = createClient(validConfig({ credentials: "omit" }));
+      const client = createAdminClient(validConfig({ credentials: "omit" }));
       const result = await client.adminRoutes.list();
       expect(result).toBeInstanceOf(Array);
     });
@@ -485,7 +485,7 @@ describe("createClient", () => {
       { name: "multiple trailing slashes", url: "///", stripped: "" },
     ])("strips $name from baseUrl", async ({ url, stripped }) => {
       const fullUrl = baseUrl + url;
-      const client = createClient({
+      const client = createAdminClient({
         baseUrl: fullUrl,
         allowInsecure: true,
       });
@@ -497,7 +497,7 @@ describe("createClient", () => {
     });
 
     test("does not alter baseUrl without trailing slash", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.adminRoutes.list();
       expect(result).toBeInstanceOf(Array);
       // Verify the request arrived at the expected path
@@ -506,7 +506,7 @@ describe("createClient", () => {
     });
 
     test("correctly builds URLs after stripping trailing slashes", async () => {
-      const client = createClient({
+      const client = createAdminClient({
         baseUrl: baseUrl + "/",
         allowInsecure: true,
       });
@@ -523,7 +523,7 @@ describe("createClient", () => {
 
   describe("client shape", () => {
     test("has auth property with all methods", () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       expect(typeof client.auth.login).toBe("function");
       expect(typeof client.auth.logout).toBe("function");
       expect(typeof client.auth.me).toBe("function");
@@ -532,7 +532,7 @@ describe("createClient", () => {
     });
 
     test("has adminRoutes with CRUD methods plus listOrdered and custom remove", () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       expect(typeof client.adminRoutes.list).toBe("function");
       expect(typeof client.adminRoutes.get).toBe("function");
       expect(typeof client.adminRoutes.create).toBe("function");
@@ -559,8 +559,8 @@ describe("createClient", () => {
       { name: "usersOauth" },
       { name: "tables" },
     ])("has $name CRUD resource with all five methods", ({ name }) => {
-      const client = createClient(validConfig());
-      const resource = client[name as keyof ModulaCMSClient] as Record<string, unknown>;
+      const client = createAdminClient(validConfig());
+      const resource = client[name as keyof ModulaCMSAdminClient] as Record<string, unknown>;
       expect(typeof resource.list).toBe("function");
       expect(typeof resource.get).toBe("function");
       expect(typeof resource.create).toBe("function");
@@ -569,30 +569,30 @@ describe("createClient", () => {
     });
 
     test("has adminTree property with get method", () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       expect(typeof client.adminTree.get).toBe("function");
     });
 
     test("has mediaUpload property with upload method", () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       expect(typeof client.mediaUpload.upload).toBe("function");
     });
 
     test("has sessions property with update and remove methods", () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       expect(typeof client.sessions.update).toBe("function");
       expect(typeof client.sessions.remove).toBe("function");
     });
 
     test("has sshKeys property with list, create, and remove methods", () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       expect(typeof client.sshKeys.list).toBe("function");
       expect(typeof client.sshKeys.create).toBe("function");
       expect(typeof client.sshKeys.remove).toBe("function");
     });
 
     test("has import property with all format methods and bulk", () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       expect(typeof client.import.contentful).toBe("function");
       expect(typeof client.import.sanity).toBe("function");
       expect(typeof client.import.strapi).toBe("function");
@@ -608,7 +608,7 @@ describe("createClient", () => {
 
   describe("adminRoutes.listOrdered", () => {
     test("sends GET request with ordered=true query parameter", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       await client.adminRoutes.listOrdered();
       expect(lastRequest).not.toBeNull();
       expect(lastRequest!.method).toBe("GET");
@@ -617,7 +617,7 @@ describe("createClient", () => {
     });
 
     test("returns the ordered list of admin routes", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.adminRoutes.listOrdered();
       expect(result).toEqual([
         { admin_route_id: "r-2", slug: "about", title: "About", status: 1 },
@@ -626,7 +626,7 @@ describe("createClient", () => {
     });
 
     test("forwards RequestOptions to the HTTP client", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const controller = new AbortController();
       controller.abort();
       try {
@@ -646,7 +646,7 @@ describe("createClient", () => {
 
   describe("adminRoutes.remove", () => {
     test("sends DELETE request to /adminroutes/ with query param q", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       await client.adminRoutes.remove("route-id-1" as AdminRouteID);
       expect(lastRequest).not.toBeNull();
       expect(lastRequest!.method).toBe("DELETE");
@@ -655,7 +655,7 @@ describe("createClient", () => {
     });
 
     test("converts AdminRouteID to string via String()", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const id = "my-route-id" as AdminRouteID;
       await client.adminRoutes.remove(id);
       expect(lastRequest).not.toBeNull();
@@ -663,13 +663,13 @@ describe("createClient", () => {
     });
 
     test("resolves void on success", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.adminRoutes.remove("r-1" as AdminRouteID);
       expect(result).toBeUndefined();
     });
 
     test("forwards RequestOptions to the HTTP client", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const controller = new AbortController();
       controller.abort();
       try {
@@ -691,7 +691,7 @@ describe("createClient", () => {
 
   describe("adminRoutes inherited CRUD", () => {
     test("list returns array of admin routes", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.adminRoutes.list();
       expect(result).toEqual([
         { admin_route_id: "r-1", slug: "home", title: "Home", status: 1 },
@@ -700,14 +700,14 @@ describe("createClient", () => {
     });
 
     test("get retrieves a single admin route by slug", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.adminRoutes.get("home" as Slug);
       expect(result.slug).toBe("home");
       expect(result.title).toBe("Found-home");
     });
 
     test("create sends POST to /adminroutes", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const params = {
         slug: "new-page" as Slug,
         title: "New Page",
@@ -724,7 +724,7 @@ describe("createClient", () => {
     });
 
     test("update sends PUT to /adminroutes/", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const params = {
         slug: "home" as Slug,
         title: "Updated Home",
@@ -765,8 +765,8 @@ describe("createClient", () => {
       { name: "usersOauth", path: "/api/v1/usersoauth" },
       { name: "tables", path: "/api/v1/tables" },
     ])("$name.list() hits $path", async ({ name, path }) => {
-      const client = createClient(validConfig());
-      const resource = client[name as keyof ModulaCMSClient] as { list: () => Promise<unknown[]> };
+      const client = createAdminClient(validConfig());
+      const resource = client[name as keyof ModulaCMSAdminClient] as { list: () => Promise<unknown[]> };
       await resource.list();
       expect(lastRequest).not.toBeNull();
       expect(lastRequest!.method).toBe("GET");
@@ -780,7 +780,7 @@ describe("createClient", () => {
 
   describe("auth resource", () => {
     test("login sends POST to /auth/login with credentials", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.auth.login({
         email: "test@example.com" as Email,
         password: "secret",
@@ -793,7 +793,7 @@ describe("createClient", () => {
     });
 
     test("logout sends POST to /auth/logout", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.auth.logout();
       expect(result).toBeUndefined();
       expect(lastRequest).not.toBeNull();
@@ -802,7 +802,7 @@ describe("createClient", () => {
     });
 
     test("me sends GET to /auth/me", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.auth.me();
       expect(result.user_id).toBe("u-1");
       expect(result.role).toBe("admin");
@@ -818,7 +818,7 @@ describe("createClient", () => {
 
   describe("apiKey forwarding", () => {
     test("sends Authorization header when apiKey is provided", async () => {
-      const client = createClient(validConfig({ apiKey: "test-api-key-123" }));
+      const client = createAdminClient(validConfig({ apiKey: "test-api-key-123" }));
       // Use a CRUD list call to trigger a request, then check the echo
       await client.adminRoutes.list();
       expect(lastRequest).not.toBeNull();
@@ -826,7 +826,7 @@ describe("createClient", () => {
     });
 
     test("does not send Authorization header when apiKey is omitted", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       await client.adminRoutes.list();
       expect(lastRequest).not.toBeNull();
       expect(lastRequest!.headers["authorization"]).toBeUndefined();
@@ -839,7 +839,7 @@ describe("createClient", () => {
 
   describe("sessions resource", () => {
     test("update sends PUT to /sessions/", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.sessions.update({} as UpdateSessionParams);
       expect(result).toBeDefined();
       expect(lastRequest).not.toBeNull();
@@ -848,7 +848,7 @@ describe("createClient", () => {
     });
 
     test("remove sends DELETE to /sessions/ with query param q", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       await client.sessions.remove("sess-1" as SessionID);
       expect(lastRequest).not.toBeNull();
       expect(lastRequest!.method).toBe("DELETE");
@@ -863,7 +863,7 @@ describe("createClient", () => {
 
   describe("sshKeys resource", () => {
     test("list sends GET to /ssh-keys", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.sshKeys.list();
       expect(result).toEqual([{ id: "sk-1", name: "my-key" }]);
       expect(lastRequest).not.toBeNull();
@@ -872,7 +872,7 @@ describe("createClient", () => {
     });
 
     test("create sends POST to /ssh-keys", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.sshKeys.create({
         name: "new-key",
         public_key: "ssh-rsa AAAA",
@@ -884,7 +884,7 @@ describe("createClient", () => {
     });
 
     test("remove sends DELETE to /ssh-keys/:id", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       await client.sshKeys.remove("sk-1");
       expect(lastRequest).not.toBeNull();
       expect(lastRequest!.method).toBe("DELETE");
@@ -898,7 +898,7 @@ describe("createClient", () => {
 
   describe("adminTree resource", () => {
     test("get sends GET to /admin/tree/:slug", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.adminTree.get("home-page" as Slug);
       expect(lastRequest).not.toBeNull();
       expect(lastRequest!.method).toBe("GET");
@@ -907,14 +907,14 @@ describe("createClient", () => {
     });
 
     test("get sends format query parameter when provided", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       await client.adminTree.get("home" as Slug, "raw");
       expect(lastRequest).not.toBeNull();
       expect(lastRequest!.params.format).toBe("raw");
     });
 
     test("get does not send format query parameter when omitted", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       await client.adminTree.get("home" as Slug);
       expect(lastRequest).not.toBeNull();
       expect(lastRequest!.params.format).toBeUndefined();
@@ -933,7 +933,7 @@ describe("createClient", () => {
       { method: "wordpress", path: "/api/v1/import/wordpress" },
       { method: "clean", path: "/api/v1/import/clean" },
     ])("$method sends POST to $path", async ({ method, path }) => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const importResource = client.import as Record<string, (data: Record<string, unknown>) => Promise<unknown>>;
       const result = await importResource[method]({ data: "test" });
       expect(lastRequest).not.toBeNull();
@@ -943,7 +943,7 @@ describe("createClient", () => {
     });
 
     test("contentful returns ImportResponse shape", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       const result = await client.import.contentful({ data: "test" });
       expect(result.success).toBe(true);
       expect(result.datatypes_created).toBe(1);
@@ -954,7 +954,7 @@ describe("createClient", () => {
     });
 
     test("bulk sends POST to /import with format query parameter", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       await client.import.bulk("contentful", { data: "test" });
       expect(lastRequest).not.toBeNull();
       expect(lastRequest!.method).toBe("POST");
@@ -1015,8 +1015,8 @@ describe("createClient", () => {
 
   describe("client isolation", () => {
     test("two clients with different apiKeys send different headers", async () => {
-      const client1 = createClient(validConfig({ apiKey: "key-alpha" }));
-      const client2 = createClient(validConfig({ apiKey: "key-beta" }));
+      const client1 = createAdminClient(validConfig({ apiKey: "key-alpha" }));
+      const client2 = createAdminClient(validConfig({ apiKey: "key-beta" }));
 
       await client1.adminRoutes.list();
       const headers1 = lastRequest!.headers["authorization"];
@@ -1029,8 +1029,8 @@ describe("createClient", () => {
     });
 
     test("client without apiKey does not inherit auth from another client", async () => {
-      const authedClient = createClient(validConfig({ apiKey: "secret-key" }));
-      const unauthedClient = createClient(validConfig());
+      const authedClient = createAdminClient(validConfig({ apiKey: "secret-key" }));
+      const unauthedClient = createAdminClient(validConfig());
 
       await authedClient.adminRoutes.list();
       expect(lastRequest!.headers["authorization"]).toBe("Bearer secret-key");
@@ -1050,7 +1050,7 @@ describe("createClient", () => {
       // These should throw immediately, not return a rejected promise
       let threw = false;
       try {
-        createClient({ baseUrl: "not-a-url" });
+        createAdminClient({ baseUrl: "not-a-url" });
       } catch {
         threw = true;
       }
@@ -1059,7 +1059,7 @@ describe("createClient", () => {
 
     // Runtime errors from the HTTP client are async
     test("runtime API errors propagate as rejected promises", async () => {
-      const client = createClient(validConfig());
+      const client = createAdminClient(validConfig());
       // Hit a path that doesn't exist on the test server
       try {
         await client.adminRoutes.get("nonexistent-slug" as Slug);
@@ -1082,14 +1082,14 @@ describe("createClient", () => {
     test("invalid baseUrl is caught before empty apiKey", () => {
       // Both baseUrl and apiKey are invalid, but baseUrl should be checked first
       expect(() =>
-        createClient({ baseUrl: "not-a-url", apiKey: "" }),
+        createAdminClient({ baseUrl: "not-a-url", apiKey: "" }),
       ).toThrow("Invalid baseUrl: not-a-url");
     });
 
     test("http:// protocol error is caught before empty apiKey", () => {
       // http:// without allowInsecure AND empty apiKey -- protocol check comes first
       expect(() =>
-        createClient({ baseUrl: "http://localhost:3000", apiKey: "" }),
+        createAdminClient({ baseUrl: "http://localhost:3000", apiKey: "" }),
       ).toThrow(
         "baseUrl uses http:// which transmits credentials in plaintext. " +
           "Set allowInsecure: true to allow this, or use https://.",
